@@ -4,6 +4,8 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
@@ -16,12 +18,33 @@ public class FfmpegRunner {
     public String runFfmpeg(@Valid FfmpegRequest request){
         //ffmpeg -ss 20 -t 30 -i "https://files.catbox.moe/xxx.webm" -c copy test.webm
         String filename = UUID.randomUUID() + request.url().substring(request.url().lastIndexOf('.'));
-        String command = "ffmpeg -ss %s -t %s -i \"%s\" -c copy \"%s\"".formatted(
-                FORMATTER.format(request.start()),
-                FORMATTER.format(request.length()),
-                request.url(),
-                filename);
-        log.info("Running command {}", command);
+        runCommand(
+                "ffmpeg",
+                "-ss", FORMATTER.format(request.start()),
+                "-t", FORMATTER.format(request.length()),
+                "-i", "\"%s\"".formatted(request.url()),
+                "-c", "copy",
+                "\"%s\"".formatted(filename)
+        );
         return filename;
+    }
+
+    private void runCommand(String... command){
+        ProcessBuilder builder = new ProcessBuilder(command);
+        builder.redirectOutput(ProcessBuilder.Redirect.INHERIT)
+                .redirectError(ProcessBuilder.Redirect.INHERIT);
+        log.info("Running command {}", builder.command());
+        try{
+            Process process = builder.start();
+            int exitCode = process.waitFor();
+            if(exitCode != 0){
+                throw new RuntimeException("Command failed with exit code " + exitCode);
+            }
+        }catch (IOException e){
+            throw new UncheckedIOException(e);
+        }catch (InterruptedException e){
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        }
     }
 }
