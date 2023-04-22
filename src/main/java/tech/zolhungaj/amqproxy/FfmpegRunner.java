@@ -16,7 +16,7 @@ import java.util.UUID;
 public class FfmpegRunner {
     private static final String QUOTED_STRING = "\"%s\"";
     private static final DecimalFormat FORMATTER = new DecimalFormat("#.##", DecimalFormatSymbols.getInstance(Locale.US));
-    public String runFfmpeg(@Valid FfmpegRequest request){
+    public String copyVideo(@Valid FfmpegRequest request){
         //ffmpeg -ss 20 -t 30 -i "https://files.catbox.moe/xxx.webm" -c copy test.webm
         String filename = UUID.randomUUID() + request.url().substring(request.url().lastIndexOf('.'));
         runCommand(
@@ -29,6 +29,24 @@ public class FfmpegRunner {
                 "-map", "0:v:0",
                 "-map", "0:a:0",
                 "-c", "copy",
+                QUOTED_STRING.formatted(filename)
+        );
+        return filename;
+    }
+
+    public String extractAudioAndEncodeToMp3(@Valid FfmpegRequest request){
+        String filename = UUID.randomUUID() + "-audio.mp3";
+        runCommand(
+                "ffmpeg",
+                "-ss", FORMATTER.format(request.start()),
+                "-t", FORMATTER.format(request.length()),
+                "-i", QUOTED_STRING.formatted(request.url()),
+                "-map_chapters", "-1",
+                "-map_metadata", "-1",
+                "-map", "0:a:0",
+                "-c", "libmp3lame",
+                "-ar", "44100",
+                "-b:a", "320k",
                 QUOTED_STRING.formatted(filename)
         );
         return filename;

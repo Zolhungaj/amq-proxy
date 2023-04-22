@@ -11,8 +11,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class RequestController {
     private final FfmpegRunner ffmpegRunner;
 
-    @PostMapping("/getVideo")
-    public String getVideo(@Valid @RequestBody FfmpegRequest request){
-        return ffmpegRunner.runFfmpeg(request);
+    @PostMapping("/proxy-video")
+    public String proxyVideo(@Valid @RequestBody FfmpegRequest request){
+        return ffmpegRunner.copyVideo(request);
+    }
+
+    @PostMapping("/proxy-audio")
+    public String proxyAudio(@Valid @RequestBody FfmpegRequest request){
+        return ffmpegRunner.extractAudioAndEncodeToMp3(request);
     }
 }
