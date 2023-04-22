@@ -14,6 +14,7 @@ import java.util.UUID;
 @Service
 @Slf4j
 public class FfmpegRunner {
+    private static final String QUOTED_STRING = "\"%s\"";
     private static final DecimalFormat FORMATTER = new DecimalFormat("#.##", DecimalFormatSymbols.getInstance(Locale.US));
     public String runFfmpeg(@Valid FfmpegRequest request){
         //ffmpeg -ss 20 -t 30 -i "https://files.catbox.moe/xxx.webm" -c copy test.webm
@@ -22,9 +23,13 @@ public class FfmpegRunner {
                 "ffmpeg",
                 "-ss", FORMATTER.format(request.start()),
                 "-t", FORMATTER.format(request.length()),
-                "-i", "\"%s\"".formatted(request.url()),
+                "-i", QUOTED_STRING.formatted(request.url()),
+                "-map_chapters", "-1",
+                "-map_metadata", "-1",
+                "-map", "0:v:0",
+                "-map", "0:a:0",
                 "-c", "copy",
-                "\"%s\"".formatted(filename)
+                QUOTED_STRING.formatted(filename)
         );
         return filename;
     }
@@ -33,7 +38,7 @@ public class FfmpegRunner {
         ProcessBuilder builder = new ProcessBuilder(command);
         builder.redirectOutput(ProcessBuilder.Redirect.INHERIT)
                 .redirectError(ProcessBuilder.Redirect.INHERIT);
-        log.info("Running command {}", builder.command());
+        log.info("Running command {}", String.join(" ", builder.command()));
         try{
             Process process = builder.start();
             int exitCode = process.waitFor();
