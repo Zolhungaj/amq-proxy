@@ -13,6 +13,8 @@ import java.io.UncheckedIOException;
 import java.nio.file.NotDirectoryException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -40,38 +42,56 @@ public class FfmpegRunner {
     public String copyVideo(@Valid FfmpegRequest request){
         //ffmpeg -ss 20 -t 30 -i "https://files.catbox.moe/xxx.webm" -c copy test.webm
         String filename = UUID.randomUUID() + request.url().substring(request.url().lastIndexOf('.'));
-        runCommand(
-                "ffmpeg",
-                "-ss", FORMATTER.format(request.start()),
-                "-t", FORMATTER.format(request.length()),
-                "-i", QUOTED_STRING.formatted(request.url()),
-                "-map_chapters", "-1",
-                "-map_metadata", "-1",
+        List<String> command = getStartOfCommand(request);
+        command.addAll(List.of(
                 "-map", "0:v:0",
                 "-map", "0:a:0",
                 "-c", "copy",
                 QUOTED_STRING.formatted(filename)
-        );
+        ));
+        runCommand(command);
         return filename;
     }
 
     public String extractAudioAndEncodeToMp3(@Valid FfmpegRequest request){
         //ffmpeg -ss xx -t xx -i "https://files.catbox.moe/xxx.webm" -map_chapters -1 -map_metadata -1 -map 0:a:0 -c libmp3lame -ar 44100 -b:a 320k xx-audio.mp3
         String filename = UUID.randomUUID() + "-audio.mp3";
-        runCommand(
-                "ffmpeg",
-                "-ss", FORMATTER.format(request.start()),
-                "-t", FORMATTER.format(request.length()),
-                "-i", QUOTED_STRING.formatted(request.url()),
-                "-map_chapters", "-1",
-                "-map_metadata", "-1",
+        List<String> command = getStartOfCommand(request);
+        command.addAll(List.of(
                 "-map", "0:a:0",
                 "-c", "libmp3lame",
                 "-ar", "44100",
                 "-b:a", "320k",
                 QUOTED_STRING.formatted(filename)
-        );
+        ));
+        runCommand(command);
         return filename;
+    }
+
+    private ArrayList<String> getStartOfCommand(FfmpegRequest request){
+        ArrayList<String> command = new ArrayList<>();
+        if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
+            command.add("cmd");
+            command.add("/c");
+        }else{
+            command.add("sh");
+            command.add("-c");
+        }
+        command.addAll(
+                List.of(
+                        "ffmpeg",
+                        "-ss", FORMATTER.format(request.start()),
+                        "-t", FORMATTER.format(request.length()),
+                        "-i", QUOTED_STRING.formatted(request.url()),
+                        "-map_chapters", "-1",
+                        "-map_metadata", "-1"
+                )
+        );
+        return command;
+    }
+
+    private void runCommand(List<String> command){
+        runCommand(command.toArray(new String[0]));
     }
 
     private void runCommand(String... command){
