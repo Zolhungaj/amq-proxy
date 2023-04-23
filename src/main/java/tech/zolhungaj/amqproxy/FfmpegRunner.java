@@ -2,7 +2,6 @@ package tech.zolhungaj.amqproxy;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -57,6 +56,7 @@ public class FfmpegRunner {
     }
 
     public String extractAudioAndEncodeToMp3(@Valid FfmpegRequest request){
+        //ffmpeg -ss xx -t xx -i "https://files.catbox.moe/xxx.webm" -map_chapters -1 -map_metadata -1 -map 0:a:0 -c libmp3lame -ar 44100 -b:a 320k xx-audio.mp3
         String filename = UUID.randomUUID() + "-audio.mp3";
         runCommand(
                 "ffmpeg",
