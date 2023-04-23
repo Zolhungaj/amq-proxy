@@ -49,14 +49,14 @@ public class FfmpegRunner {
                 "-c", "copy",
                 QUOTED_STRING.formatted(filename)
         ));
-        runCommand(command);
+        runCommandWithOsSpecificStarter(command);
         return filename;
     }
 
     public String extractAudioAndEncodeToMp3(@Valid FfmpegRequest request){
         //ffmpeg -ss xx -t xx -i "https://files.catbox.moe/xxx.webm" -map_chapters -1 -map_metadata -1 -map 0:a:0 -c libmp3lame -ar 44100 -b:a 320k xx-audio.mp3
         String filename = UUID.randomUUID() + "-audio.mp3";
-        List<String> command = getStartOfCommand(request);
+        ArrayList<String> command = getStartOfCommand(request);
         command.addAll(List.of(
                 "-map", "0:a:0",
                 "-c", "libmp3lame",
@@ -64,34 +64,38 @@ public class FfmpegRunner {
                 "-b:a", "320k",
                 QUOTED_STRING.formatted(filename)
         ));
-        runCommand(command);
+        runCommandWithOsSpecificStarter(command);
         return filename;
     }
 
+
     private ArrayList<String> getStartOfCommand(FfmpegRequest request){
+        return new ArrayList<>(List.of(
+                "ffmpeg",
+                "-ss", FORMATTER.format(request.start()),
+                "-t", FORMATTER.format(request.length()),
+                "-i", QUOTED_STRING.formatted(request.url()),
+                "-map_chapters", "-1",
+                "-map_metadata", "-1"
+        ));
+    }
+
+    private void runCommandWithOsSpecificStarter(List<String> command){
+        List<String> list = getOsSpecificCommandStarter();
+        list.add(String.join(" ", command));
+        runCommand(list.toArray(new String[0]));
+    }
+
+    private ArrayList<String> getOsSpecificCommandStarter(){
         ArrayList<String> command = new ArrayList<>();
         if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
             command.add("cmd");
             command.add("/c");
         }else{
-            command.add("sh");
+            command.add("/bin/sh");
             command.add("-c");
         }
-        command.addAll(
-                List.of(
-                        "ffmpeg",
-                        "-ss", FORMATTER.format(request.start()),
-                        "-t", FORMATTER.format(request.length()),
-                        "-i", QUOTED_STRING.formatted(request.url()),
-                        "-map_chapters", "-1",
-                        "-map_metadata", "-1"
-                )
-        );
         return command;
-    }
-
-    private void runCommand(List<String> command){
-        runCommand(command.toArray(new String[0]));
     }
 
     private void runCommand(String... command){
@@ -99,7 +103,7 @@ public class FfmpegRunner {
         builder.redirectOutput(ProcessBuilder.Redirect.INHERIT)
                 .redirectError(ProcessBuilder.Redirect.INHERIT)
                 .directory(directory);
-        log.info("Running command {}", String.join(" ", builder.command()));
+        log.info("Running command {}", builder.command());
         try{
             Process process = builder.start();
             int exitCode = process.waitFor();
