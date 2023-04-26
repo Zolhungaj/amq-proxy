@@ -1,16 +1,12 @@
 package tech.zolhungaj.amqproxy;
 
-import jakarta.annotation.PostConstruct;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.NotDirectoryException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
@@ -20,25 +16,12 @@ import java.util.UUID;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class FfmpegRunner {
     private static final String QUOTED_STRING = "\"%s\"";
     private static final DecimalFormat FORMATTER = new DecimalFormat("#.##", DecimalFormatSymbols.getInstance(Locale.US));
 
-    @Value("${amq-proxy.base-directory}")
-    private String directoryString;
-    private File directory;
-
-    @PostConstruct
-    private void init(){
-        log.info("Using directory: {}", directoryString);
-        if(directoryString == null || directoryString.isBlank()){
-            throw new UncheckedIOException(new FileNotFoundException("amq-proxy.base-directory is not set"));
-        }
-        directory = new File(directoryString);
-        if(!directory.isDirectory()){
-            throw new UncheckedIOException(new NotDirectoryException(directoryString));
-        }
-    }
+    private final ProxyConfiguration configuration;
     public String copyVideo(@Valid FfmpegRequest request){
         //ffmpeg -ss 20 -t 30 -i "https://files.catbox.moe/xxx.webm" -c copy test.webm
         String filename = UUID.randomUUID() + request.url().substring(request.url().lastIndexOf('.'));
@@ -100,9 +83,9 @@ public class FfmpegRunner {
 
     private void runCommand(String... command){
         ProcessBuilder builder = new ProcessBuilder(command);
-        builder.redirectOutput(ProcessBuilder.Redirect.INHERIT)
-                .redirectError(ProcessBuilder.Redirect.INHERIT)
-                .directory(directory);
+        builder.redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .redirectError(ProcessBuilder.Redirect.DISCARD)
+                .directory(configuration.getBaseDirectory());
         log.info("Running command {}", builder.command());
         try{
             Process process = builder.start();
